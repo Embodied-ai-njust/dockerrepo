@@ -6,11 +6,23 @@ ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 ARG GROUP_NAME=wheel
 ENV DEBIAN_FRONTEND=noninteractive
-# 修复密钥失效问题
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys F42ED6FBAB17C654 \
+
+# 步骤1：创建专用密钥目录，直接下载ROS密钥并独立存储（跳过apt-key）
+RUN mkdir -p /etc/apt/keyrings \
+    # 下载ROS密钥并保存为独立文件（使用国内镜像加速）
+    && curl -fsSL https://mirrors.tuna.tsinghua.edu.cn/ros/ros.key | gpg --dearmor -o /etc/apt/keyrings/ros.gpg \
+    # 设置安全权限（避免权限问题导致验证失败）
+    && chmod 644 /etc/apt/keyrings/ros.gpg \
+    # 添加密钥指纹验证（防止篡改或下载失败）
+    && (gpg --show-keys /etc/apt/keyrings/ros.gpg | grep -q "F42ED6FBAB17C654" || (echo "❌ 密钥指纹验证失败！"; exit 1)) \
+    # 更新ROS仓库配置：使用国内镜像源 + 显式绑定独立密钥文件
+    && echo "deb [signed-by=/etc/apt/keyrings/ros.gpg] https://mirrors.tuna.tsinghua.edu.cn/ros/ubuntu $(lsb_release -cs) main" > /etc/apt/sources.list.d/ros.list \
+    # 更新仓库并安装所需软件（清理缓存减小镜像体积）
     && apt-get update \
-    && apt-get install -y net-tools nautilus bash-completion clangd git gedit gdb nano software-properties-common wget curl vim
-# 创建用户组和用户
+    && apt-get install -y --no-install-recommends \
+        net-tools nautilus bash-completion clangd git \
+        gedit gdb nano software-properties-common wget curl vim \
+    && rm -rf /var/lib/apt/lists/*  # 立即清理APT缓存
 
 RUN groupadd --gid $USER_GID ${GROUP_NAME} \
     && useradd --uid $USER_UID --gid $USER_GID -m -s /bin/bash $USERNAME \
