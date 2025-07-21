@@ -6,10 +6,10 @@ ARG USER_UID=1000
 ARG USER_GID=$USER_UID
 ARG GROUP_NAME=wheel
 ENV DEBIAN_FRONTEND=noninteractive
-#安装必要软件
-RUN apt-get update \
-    && apt-get install -y  net-tools nautilus bash-completion clangd git gedit gdb nano software-properties-common wget curl vim
-# nautilus-extension-gnome-terminal dbus-x11 libcanberra-gtk-module libcanberra-gtk3-module git-lfs
+# 修复密钥失效问题
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys F42ED6FBAB17C654 \
+    && apt-get update \
+    && apt-get install -y net-tools nautilus bash-completion clangd git gedit gdb nano software-properties-common wget curl vim
 # 创建用户组和用户
 
 RUN groupadd --gid $USER_GID ${GROUP_NAME} \
