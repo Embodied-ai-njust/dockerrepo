@@ -26,10 +26,11 @@ RUN echo "source /opt/ros/$ROS_DISTRO/setup.bash" >> /home/$USERNAME/.bashrc \
     && echo "source /usr/share/colcon_argcomplete/hook/colcon-argcomplete.bash" >> /home/$USERNAME/.bashrc
 
 RUN mkdir -p franka_ros2_ws/src && cd franka_ros2_ws/src && git clone https://github.com/frankarobotics/franka_ros2.git
-
+RUN cd /home/$USERNAME/packages && mkdir -p ws_moviet_mtc/src && cd ws_moviet_mtc/src && \
+git clone --branch humble https://github.com/moveit/moveit_task_constructor.git
 USER $USERNAME
 
-# Install some ROS 2 dependencies to create a cache layer
+# Install some ROS 2 dependencies to create a cache layer,py-binding-tools和moviet-core是MTC需要的依赖项
 RUN sudo apt-get update \
     && sudo apt-get install -y --no-install-recommends \
         ros-humble-ros-gz \
@@ -59,6 +60,8 @@ RUN sudo apt-get update \
         ros-humble-moveit-simple-controller-manager \
         ros-humble-rviz2 \
         ros-humble-xacro \
+        ros-$ROS_DISTRO-py-binding-tools \ 
+        ros-$ROS_DISTRO-moveit-core \
     && sudo apt-get clean \
     && sudo rm -rf /var/lib/apt/lists/*
 
@@ -72,10 +75,30 @@ RUN sudo chown -R $USERNAME:$GROUP_NAME ./ \
     && rosdep install --from-paths src --ignore-src --rosdistro $ROS_DISTRO -y \
     && sudo apt-get clean \
     && sudo rm -rf /var/lib/apt/lists/*
+RUN sudo chown -R $USERNAME:$GROUP_NAME /home/$USERNAME/packages/ws_moviet_mtc/  
 
-RUN /bin/bash -c "source /opt/ros/$ROS_DISTRO/setup.bash \
-    && cd /home/$USERNAME/packages/franka_ros2_ws \
-    && colcon build"
+# 构建第一个工作空间
+RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
+    cd /home/$USERNAME/packages/franka_ros2_ws && \
+    colcon build
+
+# 构建第二个工作空间
+RUN . /opt/ros/$ROS_DISTRO/setup.sh && \
+    cd /home/$USERNAME/packages/ws_moviet_mtc && \
+    colcon build
+
+RUN sudo chown -R $USERNAME:$GROUP_NAME /home/$USERNAME/.config
+# 统一配置所有工作空间的source顺序 (防止覆盖)
+RUN echo "source /opt/ros/$ROS_DISTRO/setup.bash" >> /home/$USERNAME/.bashrc \
+    && echo "source /home/$USERNAME/packages/franka_ros2_ws/install/setup.bash" >> /home/$USERNAME/.bashrc \
+    && echo "source /home/$USERNAME/packages/ws_moviet_mtc/install/setup.bash" >> /home/$USERNAME/.bashrc \
+    && echo "export ROS_LOCALHOST_ONLY=1" >> /home/$USERNAME/.bashrc \
+    \
+    && echo "bass source /opt/ros/$ROS_DISTRO/setup.bash" >> /home/$USERNAME/.config/fish/config.fish \
+    && echo "bass source /home/$USERNAME/packages/franka_ros2_ws/install/setup.bash" >> /home/$USERNAME/.config/fish/config.fish \
+    && echo "bass source /home/$USERNAME/packages/ws_moviet_mtc/install/setup.bash" >> /home/$USERNAME/.config/fish/config.fish \
+    && echo "set -x ROS_LOCALHOST_ONLY 1" >> /home/$USERNAME/.config/fish/config.fish
+
 # COPY ./franka_entrypoint.sh /franka_entrypoint.sh
 # RUN sudo chmod +x /franka_entrypoint.sh
 # RUN /franka_entrypoint.sh
