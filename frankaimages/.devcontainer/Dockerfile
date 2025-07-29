@@ -52,12 +52,8 @@ RUN sudo apt-get update \
         ros-humble-realtime-tools \
         ros-humble-joint-state-publisher \
         ros-humble-joint-state-broadcaster \
-        ros-humble-moveit-ros-move-group \
-        ros-humble-moveit-kinematics \
-        ros-humble-moveit-planners-ompl \
-        ros-humble-moveit-ros-visualization \
+        ros-humble-moveit \
         ros-humble-joint-trajectory-controller \
-        ros-humble-moveit-simple-controller-manager \
         ros-humble-rviz2 \
         ros-humble-xacro \
         ros-$ROS_DISTRO-py-binding-tools \ 
